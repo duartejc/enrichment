@@ -57,7 +57,8 @@ function App() {
   const createSheet = async () => {
     setIsCreatingSheet(true);
     try {
-      const response = await fetch('http://localhost:3002/api/sheets', {
+      const apiUrl = process.env.VITE_API_URL || 'http://localhost:3002/api/sheets';
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

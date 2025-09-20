@@ -128,7 +128,7 @@ class SheetWebSocketService {
 
     return new Promise((resolve, reject) => {
       try {
-        this.socket = io('http://localhost:3002/data', {
+        this.socket = io(`${import.meta.env.VITE_API_URL}/data`, {
           transports: ['websocket'],
           autoConnect: true,
         });
