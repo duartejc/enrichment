@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
@@ -5,7 +8,6 @@ import { createHash } from 'crypto';
 import { OpenCNPJService } from './opencnpj.service';
 import { SheetService } from './sheet.service';
 import { CollaborationService } from './collaboration.service';
-import { EnrichmentResult as SheetEnrichmentResult } from '../types/sheet.types';
 
 export interface EnrichmentProgress {
   processed: number;
@@ -70,7 +72,9 @@ export class DataEnrichmentService {
       const batchSize = options.batchSize || 50;
       const batches = this.createBatches(data, batchSize);
 
-      this.logger.log(`Starting enrichment for ${data.length} items in ${batches.length} batches`);
+      this.logger.log(
+        `Starting enrichment for ${data.length} items in ${batches.length} batches`,
+      );
 
       // Process batches in parallel with controlled concurrency
       const concurrency = options.concurrency || 3;
@@ -100,7 +104,9 @@ export class DataEnrichmentService {
         errorSession.error = error.message;
         errorSession.endTime = new Date();
       }
-      this.logger.error(`Enrichment failed for session ${sessionId}: ${error.message}`);
+      this.logger.error(
+        `Enrichment failed for session ${sessionId}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -129,9 +135,16 @@ export class DataEnrichmentService {
 
     // Process batches with controlled concurrency
     const processingPromises: Promise<void>[] = [];
-    
+
     for (let i = 0; i < batches.length; i++) {
-      if ((session.status as 'pending' | 'processing' | 'completed' | 'cancelled' | 'error') === 'cancelled') {
+      if (
+        (session.status as
+          | 'pending'
+          | 'processing'
+          | 'completed'
+          | 'cancelled'
+          | 'error') === 'cancelled'
+      ) {
         this.logger.log(`Session ${sessionId} cancelled, stopping processing`);
         return;
       }
@@ -143,7 +156,7 @@ export class DataEnrichmentService {
       if (processingPromises.length >= concurrency) {
         await Promise.race(processingPromises);
         // Remove completed promises
-        processingPromises.splice(0, 1);
+        void processingPromises.splice(0, 1);
       }
 
       const batchPromise = this.processBatch(
@@ -176,22 +189,38 @@ export class DataEnrichmentService {
     if (!session || session.status === 'cancelled') return;
 
     try {
-      this.logger.log(`Processing batch ${batchNumber} with ${batch.length} items`);
+      this.logger.log(
+        `Processing batch ${batchNumber} with ${batch.length} items`,
+      );
 
       // Simulate enrichment process (replace with actual enrichment logic)
       const enrichedResults: EnrichmentResult[] = [];
 
       for (let i = 0; i < batch.length; i++) {
-        if ((session.status as 'pending' | 'processing' | 'completed' | 'cancelled' | 'error') === 'cancelled') break;
+        if (
+          (session.status as
+            | 'pending'
+            | 'processing'
+            | 'completed'
+            | 'cancelled'
+            | 'error') === 'cancelled'
+        )
+          break;
 
         const item = batch[i];
         // Usar índices originais se disponíveis, senão calcular
-        const originalIndex = options.originalIndices 
-          ? options.originalIndices[(batchNumber - 1) * (options.batchSize || 50) + i]
+        const originalIndex = options.originalIndices
+          ? options.originalIndices[
+              (batchNumber - 1) * (options.batchSize || 50) + i
+            ]
           : (batchNumber - 1) * (options.batchSize || 50) + i;
 
         // Perform real or simulated enrichment based on type
-        const enrichedData = await this.performEnrichment(item, enrichmentType, options);
+        const enrichedData = await this.performEnrichment(
+          item,
+          enrichmentType,
+          options,
+        );
 
         enrichedResults.push({
           rowIndex: originalIndex,
@@ -201,7 +230,9 @@ export class DataEnrichmentService {
 
         // Update progress
         session.progress.processed++;
-        session.progress.percentage = Math.round((session.progress.processed / session.progress.total) * 100);
+        session.progress.percentage = Math.round(
+          (session.progress.processed / session.progress.total) * 100,
+        );
         session.progress.currentBatch = batchNumber;
 
         onProgress({ ...session.progress });
@@ -213,9 +244,13 @@ export class DataEnrichmentService {
         onPartialResult(enrichedResults);
       }
 
-      this.logger.log(`Batch ${batchNumber} completed with ${enrichedResults.length} results`);
+      this.logger.log(
+        `Batch ${batchNumber} completed with ${enrichedResults.length} results`,
+      );
     } catch (error) {
-      this.logger.error(`Error processing batch ${batchNumber}: ${error.message}`);
+      this.logger.error(
+        `Error processing batch ${batchNumber}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -234,7 +269,7 @@ export class DataEnrichmentService {
         return await this.enrichCompanyWithCNPJ(item, options);
       } else {
         this.logger.log(`Enriching ${enrichmentType}`);
-        return await this.simulateEnrichment(item, enrichmentType, options);
+        return await this.simulateEnrichment(item, enrichmentType);
       }
     } catch (error) {
       this.logger.error(`Error enriching item: ${error.message}`);
@@ -250,10 +285,13 @@ export class DataEnrichmentService {
   /**
    * Enriches company data using OpenCNPJ API
    */
-  private async enrichCompanyWithCNPJ(item: any, options: any): Promise<Record<string, any>> {
+  private async enrichCompanyWithCNPJ(
+    item: any,
+    options: any,
+  ): Promise<Record<string, any>> {
     // Extract CNPJ from item
     const cnpj = this.extractCNPJFromItem(item, options);
-    
+
     if (!cnpj) {
       this.logger.warn(`No CNPJ found for item: ${JSON.stringify(item)}`);
       return {
@@ -264,9 +302,9 @@ export class DataEnrichmentService {
     }
 
     this.logger.log(`Enriching company with CNPJ: ${cnpj}`);
-    
+
     const enrichmentResult = await this.openCNPJService.enrichCNPJ(cnpj);
-    
+
     // Transform the result to match the expected format
     return {
       cnpj: enrichmentResult.cnpj,
@@ -278,7 +316,7 @@ export class DataEnrichmentService {
       activity_start_date: enrichmentResult.dataInicioAtividade,
       main_activity: enrichmentResult.cnaePrincipal,
       legal_nature: enrichmentResult.naturezaJuridica,
-      
+
       // Address information
       address: {
         street: enrichmentResult.endereco.logradouro,
@@ -289,29 +327,29 @@ export class DataEnrichmentService {
         city: enrichmentResult.endereco.municipio,
         state: enrichmentResult.endereco.uf,
       },
-      
+
       // Contact information
       contact: {
         email: enrichmentResult.contato.email,
-        phones: enrichmentResult.contato.telefones.map(tel => ({
+        phones: enrichmentResult.contato.telefones.map((tel) => ({
           number: `(${tel.ddd}) ${tel.numero}`,
           type: tel.is_fax ? 'fax' : 'phone',
         })),
       },
-      
+
       // Financial information
       share_capital: enrichmentResult.capitalSocial,
       company_size: enrichmentResult.porteEmpresa,
       partners_count: enrichmentResult.socios.length,
-      
+
       // Partners information (first 3 for summary)
-      partners: enrichmentResult.socios.slice(0, 3).map(socio => ({
+      partners: enrichmentResult.socios.slice(0, 3).map((socio) => ({
         name: socio.nome_socio,
         qualification: socio.qualificacao_socio,
         entry_date: socio.data_entrada_sociedade,
         type: socio.identificador_socio,
       })),
-      
+
       // Metadata
       enriched_at: enrichmentResult.enrichedAt,
       data_source: 'OpenCNPJ API',
@@ -325,20 +363,27 @@ export class DataEnrichmentService {
   private extractCNPJFromItem(item: any, options: any): string | null {
     // If options specify which field contains the CNPJ
     if (options?.cnpjField && item[options.cnpjField]) {
-      return item[options.cnpjField];
+      return item[options.cnpjField] as string;
     }
 
     // Try common CNPJ fields
-    const commonCNPJFields = ['cnpj', 'CNPJ', 'document', 'documento', 'registration', 'registro'];
-    
+    const commonCNPJFields = [
+      'cnpj',
+      'CNPJ',
+      'document',
+      'documento',
+      'registration',
+      'registro',
+    ];
+
     for (const field of commonCNPJFields) {
       if (item[field]) {
-        return item[field];
+        return item[field] as string;
       }
     }
 
     // Look for any field that looks like a CNPJ (14 digits)
-    for (const [key, value] of Object.entries(item)) {
+    for (const [, value] of Object.entries(item)) {
       if (typeof value === 'string') {
         const cleanValue = value.replace(/\D/g, '');
         if (cleanValue.length === 14) {
@@ -356,10 +401,11 @@ export class DataEnrichmentService {
   private async simulateEnrichment(
     item: any,
     enrichmentType: string,
-    options: any,
   ): Promise<Record<string, any>> {
     // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 1000 + 500),
+    );
 
     const enriched: Record<string, any> = {};
 
@@ -369,19 +415,19 @@ export class DataEnrichmentService {
         enriched.zip_code = String(Math.floor(Math.random() * 90000) + 10000);
         enriched.country = 'Country';
         break;
-      
+
       case 'email':
-        enriched.email = `${item.name?.toLowerCase().replace(/\s+/g, '.') || 'user'}@example.com`;
+        enriched.email = `${(item.name as string).toLowerCase().replace(/\s+/g, '.') || 'user'}@example.com`;
         enriched.email_valid = Math.random() > 0.1;
         enriched.email_domain = 'example.com';
         break;
-      
+
       case 'phone':
         enriched.phone = `+1 ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`;
         enriched.phone_valid = Math.random() > 0.1;
         enriched.phone_type = Math.random() > 0.5 ? 'mobile' : 'landline';
         break;
-      
+
       default:
         enriched.enriched_data = `Enriched ${enrichmentType} data for ${JSON.stringify(item)}`;
     }
@@ -407,7 +453,9 @@ export class DataEnrichmentService {
   }
 
   public generateSessionId(data: any[], enrichmentType: string): string {
-    const dataHash = createHash('md5').update(JSON.stringify(data)).digest('hex');
+    const dataHash = createHash('md5')
+      .update(JSON.stringify(data))
+      .digest('hex');
     const typeHash = createHash('md5').update(enrichmentType).digest('hex');
     const timestamp = Date.now();
     return `${dataHash.substring(0, 8)}-${typeHash.substring(0, 8)}-${timestamp}`;
@@ -416,15 +464,25 @@ export class DataEnrichmentService {
   /**
    * Colunas padrão para enriquecimento de empresas
    */
-  private getEnrichmentColumns(enrichmentType: string): Array<{id: string, name: string, type: string}> {
+  private getEnrichmentColumns(
+    enrichmentType: string,
+  ): Array<{ id: string; name: string; type: string }> {
     if (enrichmentType === 'company') {
       return [
         { id: 'company_name', name: 'Company Name', type: 'text' },
         { id: 'trade_name', name: 'Trade Name', type: 'text' },
         { id: 'company_status', name: 'Company Status', type: 'text' },
-        { id: 'company_status_date', name: 'Company Status Date', type: 'date' },
+        {
+          id: 'company_status_date',
+          name: 'Company Status Date',
+          type: 'date',
+        },
         { id: 'company_type', name: 'Company Type', type: 'text' },
-        { id: 'activity_start_date', name: 'Activity Start Date', type: 'date' },
+        {
+          id: 'activity_start_date',
+          name: 'Activity Start Date',
+          type: 'date',
+        },
         { id: 'main_activity', name: 'Main Activity', type: 'text' },
         { id: 'legal_nature', name: 'Legal Nature', type: 'text' },
         { id: 'address', name: 'Address', type: 'text' },
@@ -449,54 +507,84 @@ export class DataEnrichmentService {
     options: any = {},
     userId: string = 'system',
   ): Promise<string> {
-    this.logger.log(`Starting sheet enrichment: ${sheetId} with type ${enrichmentType}`);
+    this.logger.log(
+      `Starting sheet enrichment: ${sheetId} with type ${enrichmentType}`,
+    );
 
     // Obter apenas registros não enriquecidos
     const cnpjField = options.cnpjField || 'cnpj';
-    const unenrichedRows = this.sheetService.getUnenrichedRows(sheetId, cnpjField);
-    
+    const unenrichedRows = this.sheetService.getUnenrichedRows(
+      sheetId,
+      cnpjField,
+    );
+
     if (unenrichedRows.length === 0) {
       this.logger.log(`No unenriched rows found in sheet ${sheetId}`);
       throw new Error('Não há registros com CNPJ para enriquecer');
     }
 
-    this.logger.log(`Found ${unenrichedRows.length} unenriched rows to process`);
-    const sessionId = this.generateSessionId(unenrichedRows.map(r => r.data), enrichmentType);
+    this.logger.log(
+      `Found ${unenrichedRows.length} unenriched rows to process`,
+    );
+    const sessionId = this.generateSessionId(
+      unenrichedRows.map((r) => r.data),
+      enrichmentType,
+    );
 
     // Criar colunas de enriquecimento previamente
     const enrichmentColumns = this.getEnrichmentColumns(enrichmentType);
     for (const column of enrichmentColumns) {
       // Verificar se a coluna já existe
       const sheetData = this.sheetService.getSheetData(sheetId);
-      const columnExists = sheetData.columns.find(col => col.id === column.id);
-      
+      const columnExists = sheetData.columns.find(
+        (col) => col.id === column.id,
+      );
+
       if (!columnExists) {
         // Adicionar coluna
-        this.sheetService.addColumn(sheetId, {
-          name: column.name,
-          type: column.type as any,
-          editable: true,
-        }, userId);
+        this.sheetService.addColumn(
+          sheetId,
+          {
+            name: column.name,
+            type: column.type as any,
+            editable: true,
+          },
+          userId,
+        );
       }
     }
 
     // Marcar células como "loading" para as linhas que serão enriquecidas
-    this.sheetService.markCellsAsLoading(sheetId, unenrichedRows.map(r => r.index), enrichmentColumns.map(c => c.id));
+    this.sheetService.markCellsAsLoading(
+      sheetId,
+      unenrichedRows.map((r) => r.index),
+      enrichmentColumns.map((c) => c.id),
+    );
 
     // Broadcast inicial com colunas criadas e células em loading
     const updatedSheetData = this.sheetService.getSheetData(sheetId);
-    this.collaborationService.broadcastSheetUpdate(sheetId, updatedSheetData, userId);
+    this.collaborationService.broadcastSheetUpdate(
+      sheetId,
+      updatedSheetData,
+      userId,
+    );
 
     // Configurar callbacks para atualizar a planilha em memória
     const sheetOnProgress = (progress: EnrichmentProgress) => {
       // Broadcast progresso via WebSocket através do CollaborationService
-      this.collaborationService.broadcastEnrichmentProgress(sheetId, sessionId, progress);
-      this.logger.debug(`Enrichment progress: ${progress.percentage}% for sheet ${sheetId}`);
+      this.collaborationService.broadcastEnrichmentProgress(
+        sheetId,
+        sessionId,
+        progress,
+      );
+      this.logger.debug(
+        `Enrichment progress: ${progress.percentage}% for sheet ${sheetId}`,
+      );
     };
 
     const sheetOnPartialResult = (results: EnrichmentResult[]) => {
       // Converter resultados para formato da planilha
-      const sheetResults: EnrichmentResult[] = results.map(result => ({
+      const sheetResults: EnrichmentResult[] = results.map((result) => ({
         rowIndex: result.rowIndex,
         data: result.data,
         enrichedFields: result.enrichedFields,
@@ -509,19 +597,25 @@ export class DataEnrichmentService {
       const updatedSheetData = this.sheetService.getSheetData(sheetId);
 
       // Broadcast dados atualizados via WebSocket
-      this.collaborationService.broadcastSheetUpdate(sheetId, updatedSheetData, userId);
+      this.collaborationService.broadcastSheetUpdate(
+        sheetId,
+        updatedSheetData,
+        userId,
+      );
 
-      this.logger.debug(`Applied ${results.length} enrichment results to sheet ${sheetId}`);
+      this.logger.debug(
+        `Applied ${results.length} enrichment results to sheet ${sheetId}`,
+      );
     };
 
     // Iniciar enriquecimento usando apenas registros não enriquecidos
     await this.startEnrichment(
-      unenrichedRows.map(r => r.data),
+      unenrichedRows.map((r) => r.data),
       enrichmentType,
       {
         ...options,
         sheetId, // Adicionar ID da planilha às opções
-        originalIndices: unenrichedRows.map(r => r.index), // Manter índices originais
+        originalIndices: unenrichedRows.map((r) => r.index), // Manter índices originais
       },
       sessionId,
       sheetOnProgress,
@@ -539,7 +633,7 @@ export class DataEnrichmentService {
     metadata: any;
   } {
     const sheetData = this.sheetService.getSheetData(sheetId);
-    
+
     return {
       data: sheetData.rows,
       metadata: {
@@ -556,20 +650,22 @@ export class DataEnrichmentService {
    */
   cancelSheetEnrichment(sheetId: string, sessionId: string): void {
     this.cancelEnrichment(sessionId);
-    
+
     // Broadcast cancelamento via WebSocket
-    const event = this.collaborationService.processOperation({
+    this.collaborationService.processOperation({
       type: 'enrichment_update',
       sheetId,
       userId: 'enrichment_system',
       timestamp: Date.now(),
-      data: { 
+      data: {
         sessionId,
-        type: 'cancelled'
+        type: 'cancelled',
       },
       version: 0, // Não altera versão da planilha
     });
 
-    this.logger.log(`Cancelled enrichment session ${sessionId} for sheet ${sheetId}`);
+    this.logger.log(
+      `Cancelled enrichment session ${sessionId} for sheet ${sheetId}`,
+    );
   }
 }

@@ -1,15 +1,16 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
-  Delete, 
-  Body, 
-  Param, 
-  Query, 
-  HttpException, 
-  HttpStatus, 
-  BadRequestException 
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  HttpException,
+  HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import { SheetService } from '../services/sheet.service';
@@ -30,7 +31,7 @@ export class SheetController {
    * Lista todas as planilhas
    */
   @Get()
-  async listSheets(
+  listSheets(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
@@ -41,7 +42,10 @@ export class SheetController {
         data: result,
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        (error as Error).message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -49,18 +53,19 @@ export class SheetController {
    * Cria uma nova planilha
    */
   @Post()
-  async createSheet(
-    @Body() body: {
+  createSheet(
+    @Body()
+    body: {
       name: string;
       initialData?: Record<string, any>[];
       userId?: string;
-    }
+    },
   ) {
     try {
       const { name, initialData, userId = 'system' } = body;
-      
+
       const sheet = this.sheetService.createSheet(name, initialData, userId);
-      
+
       return {
         success: true,
         data: {
@@ -72,7 +77,7 @@ export class SheetController {
         message: 'Planilha criada com sucesso',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -80,11 +85,11 @@ export class SheetController {
    * Obtém dados de uma planilha específica
    */
   @Get(':id')
-  async getSheet(@Param('id') id: string) {
+  getSheet(@Param('id') id: string) {
     try {
       const sheetData = this.sheetService.getSheetData(id);
       const activeUsers = this.collaborationService.getActiveUsers(id);
-      
+
       return {
         success: true,
         data: {
@@ -94,10 +99,16 @@ export class SheetController {
         },
       };
     } catch (error) {
-      if (error.message.includes('not found')) {
-        throw new HttpException('Planilha não encontrada', HttpStatus.NOT_FOUND);
+      if ((error as Error).message.includes('not found')) {
+        throw new HttpException(
+          'Planilha não encontrada',
+          HttpStatus.NOT_FOUND,
+        );
       }
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        (error as Error).message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -105,33 +116,42 @@ export class SheetController {
    * Atualiza uma célula específica
    */
   @Put(':id/cells')
-  async updateCell(
+  updateCell(
     @Param('id') id: string,
-    @Body() body: {
+    @Body()
+    body: {
       rowIndex: number;
       columnId: string;
       value: any;
       userId?: string;
-    }
+    },
   ) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { rowIndex, columnId, value, userId = 'system' } = body;
-      
-      const updatedSheet = this.sheetService.updateCell(id, rowIndex, columnId, value, userId);
-      
+
+      const updatedSheet = this.sheetService.updateCell(
+        id,
+        rowIndex,
+        columnId,
+        value,
+        userId,
+      );
+
       return {
         success: true,
         data: {
           sheetId: id,
           rowIndex,
           columnId,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           value,
           version: updatedSheet.metadata.version,
         },
         message: 'Célula atualizada com sucesso',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -139,18 +159,19 @@ export class SheetController {
    * Adiciona uma nova linha
    */
   @Post(':id/rows')
-  async addRow(
+  addRow(
     @Param('id') id: string,
-    @Body() body: {
+    @Body()
+    body: {
       data: Record<string, any>;
       userId?: string;
-    }
+    },
   ) {
     try {
       const { data, userId = 'system' } = body;
-      
+
       const updatedSheet = this.sheetService.addRow(id, data, userId);
-      
+
       return {
         success: true,
         data: {
@@ -162,7 +183,7 @@ export class SheetController {
         message: 'Linha adicionada com sucesso',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -170,27 +191,36 @@ export class SheetController {
    * Adiciona uma nova coluna
    */
   @Post(':id/columns')
-  async addColumn(
+  addColumn(
     @Param('id') id: string,
-    @Body() body: {
+    @Body()
+    body: {
       name: string;
-      type: 'text' | 'number' | 'date' | 'email' | 'phone' | 'cnpj' | 'select' | 'enriched';
+      type:
+        | 'text'
+        | 'number'
+        | 'date'
+        | 'email'
+        | 'phone'
+        | 'cnpj'
+        | 'select'
+        | 'enriched';
       editable: boolean;
       enrichmentType?: 'address' | 'email' | 'phone' | 'company';
       userId?: string;
-    }
+    },
   ) {
     try {
       const { name, type, editable, enrichmentType, userId = 'system' } = body;
-      
+
       const updatedSheet = this.sheetService.addColumn(
-        id, 
-        { name, type, editable, enrichmentType }, 
-        userId
+        id,
+        { name, type, editable, enrichmentType },
+        userId,
       );
-      
+
       const newColumn = updatedSheet.columns[updatedSheet.columns.length - 1];
-      
+
       return {
         success: true,
         data: {
@@ -201,7 +231,7 @@ export class SheetController {
         message: 'Coluna adicionada com sucesso',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -211,22 +241,24 @@ export class SheetController {
   @Post(':id/enrich')
   async enrichSheet(
     @Param('id') id: string,
-    @Body() body: {
+    @Body()
+    body: {
       enrichmentType: string;
       options?: any;
       userId?: string;
-    }
+    },
   ) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { enrichmentType, options = {}, userId = 'system' } = body;
-      
+
       const sessionId = await this.dataEnrichmentService.enrichSheet(
         id,
         enrichmentType,
         options,
-        userId
+        userId,
       );
-      
+
       return {
         success: true,
         data: {
@@ -237,7 +269,7 @@ export class SheetController {
         message: 'Enriquecimento iniciado com sucesso',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -245,19 +277,19 @@ export class SheetController {
    * Cancela enriquecimento em andamento
    */
   @Delete(':id/enrich/:sessionId')
-  async cancelEnrichment(
+  cancelEnrichment(
     @Param('id') id: string,
-    @Param('sessionId') sessionId: string
+    @Param('sessionId') sessionId: string,
   ) {
     try {
       this.dataEnrichmentService.cancelSheetEnrichment(id, sessionId);
-      
+
       return {
         success: true,
         message: 'Enriquecimento cancelado com sucesso',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException((error as Error).message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -286,41 +318,47 @@ export class SheetController {
    * Exporta dados da planilha
    */
   @Get(':id/export')
-  async exportSheet(
+  exportSheet(
     @Param('id') id: string,
-    @Query('format') format: 'json' | 'csv' = 'json'
+    @Query('format') format: 'json' | 'csv' = 'json',
   ) {
     try {
       const sheetData = this.sheetService.getSheetData(id);
-      
+
       if (format === 'csv') {
         // Converter para CSV
-        const headers = sheetData.columns.map(col => col.name).join(',');
-        const rows = sheetData.rows.map(row => 
-          sheetData.columns.map(col => row[col.id] || '').join(',')
-        ).join('\n');
-        
+        const headers = sheetData.columns.map((col) => col.name).join(',');
+        const rows = sheetData.rows
+          .map((row) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            sheetData.columns.map((col) => row[col.id] || '').join(','),
+          )
+          .join('\n');
+
         return {
           success: true,
           data: `${headers}\n${rows}`,
           format: 'csv',
         };
       }
-      
+
       return {
         success: true,
         data: sheetData,
         format: 'json',
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        (error as Error).message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
   @Get(':id/enrichment/stats')
-  async getEnrichmentStats(
+  getEnrichmentStats(
     @Param('id') id: string,
-    @Query('cnpjField') cnpjField: string = 'cnpj'
+    @Query('cnpjField') cnpjField: string = 'cnpj',
   ) {
     try {
       const stats = this.sheetService.getEnrichmentStats(id, cnpjField);
@@ -329,14 +367,14 @@ export class SheetController {
         data: stats,
       };
     } catch (error) {
-      throw new BadRequestException(error.message);
+      throw new BadRequestException((error as Error).message);
     }
   }
 
   @Get(':id/enrichment/unenriched')
-  async getUnenrichedRows(
+  getUnenrichedRows(
     @Param('id') id: string,
-    @Query('cnpjField') cnpjField: string = 'cnpj'
+    @Query('cnpjField') cnpjField: string = 'cnpj',
   ) {
     try {
       const unenrichedRows = this.sheetService.getUnenrichedRows(id, cnpjField);
@@ -346,7 +384,7 @@ export class SheetController {
         count: unenrichedRows.length,
       };
     } catch (error) {
-      throw new BadRequestException(error.message);
+      throw new BadRequestException((error as Error).message);
     }
   }
 }

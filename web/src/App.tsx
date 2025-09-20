@@ -3,9 +3,8 @@ import { CollaborativeSheet } from './components/collaborative-sheet'
 import { useSheet } from './hooks/useSheet'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
-import { Badge } from './components/ui/badge'
 import { Skeleton } from './components/ui/skeleton'
-import { DatabaseIcon, Plus, RefreshCw, Users } from 'lucide-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import { SidebarInset, SidebarProvider } from './components/ui/sidebar'
 import { AppSidebar } from './components/app-sidebar'
 import { SiteHeader } from './components/site-header'
@@ -93,7 +92,7 @@ function App() {
     if (!sheetId && !isCreatingSheet) {
       createSheet();
     }
-  }, []);
+  });
 
   if (!sheetId) {
     return (

@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Skeleton } from './ui/skeleton';
@@ -10,12 +10,9 @@ import {
   SheetHeader, 
   SheetTitle, 
   SheetDescription,
-  SheetTrigger 
 } from './ui/sheet';
 import { 
   IconPlus, 
-  IconLoader2, 
-  IconX, 
   IconEdit,
   IconDatabase,
   IconUsers
