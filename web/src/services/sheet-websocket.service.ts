@@ -128,7 +128,7 @@ class SheetWebSocketService {
 
     return new Promise((resolve, reject) => {
       try {
-        this.socket = io(`${import.meta.env.VITE_API_URL}/data`, {
+        this.socket = io('http://56.124.127.185:3002/data', {
           transports: ['websocket'],
           autoConnect: true,
         });
